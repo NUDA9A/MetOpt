@@ -143,13 +143,15 @@ def dihotomiya(f, x, y, grad, l, r, counters, stop=np.finfo(float).eps):
     return c_k
 
 
-def l_search(f, x, y, grad, a_0):
+def l_search(f, x, y, grad, a_0, c1, c2):
     alpha = line_search(
         f=f,
         myfprime=lambda args: grad_f(f, args[0], args[1]),
         xk=np.array([x, y]),
         pk=-grad,
         amax=a_0,
+        c1=c1,
+        c2=c2,
     )
     return x - alpha[0] * grad[0], y - alpha[0] * grad[1]
 
@@ -184,15 +186,15 @@ def make_step(
             return x - (h / np.sqrt((iteration + 1))) * grad[0], y - (h / np.sqrt((iteration + 1))) * grad[1], -1, -1
         case "Armijo":
             a_x, a_y = armijo_gradient_descent(f, x, y, grad, c1, a_0, 0.5, log_file, counters)
-            ls_x, ls_y = l_search(f, l_s_x, l_s_y, grad_l_s, a_0)
+            ls_x, ls_y = l_search(f, l_s_x, l_s_y, grad_l_s, a_0, c1, 0.9)
             return a_x, a_y, ls_x, ls_y
         case "Goldstein":
             g_x, g_y = goldstein(f, x, y, grad, c1, c2, a_0, 100, log_file, counters)
-            ls_x, ls_y = l_search(f, l_s_x, l_s_y, grad_l_s, a_0)
+            ls_x, ls_y = l_search(f, l_s_x, l_s_y, grad_l_s, a_0, c1, c2)
             return g_x, g_y, ls_x, ls_y
         case "golden_section":
             _, a2, _ = golden_section(f, x, y, grad, 0.0, a_0, counters, stop)
-            sm_x, sm_y = s_minimize(f, x, y, grad, "golden")
+            sm_x, sm_y = s_minimize(f, l_s_x, l_s_y, grad_l_s, "golden")
 
             return x - a2 * grad[0], y - a2 * grad[1], sm_x, sm_y
         case "dihotomiya":
@@ -203,7 +205,7 @@ def make_step(
             alpha = parabolic(f, x, y, grad, [a1, a2, a3])
             counters[0] += 3
             counters[2] += 1
-            s_x, s_y = s_minimize(f, x, y, grad, "brent")
+            s_x, s_y = s_minimize(f, l_s_x, l_s_y, grad_l_s, "brent")
             return x - alpha * grad[0], y - alpha * grad[1], s_x, s_y
 
 
