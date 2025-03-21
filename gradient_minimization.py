@@ -1,5 +1,5 @@
 from functions import np
-from scipy.optimize import line_search
+from scipy.optimize import line_search, minimize_scalar
 
 
 def grad_f(f, x, y):
@@ -68,13 +68,12 @@ def armijo_gradient_descent(f, x, y, grad, c1, a0, q, log_file, counters):
 
 
 def golden_section(f, x, y, grad, l, r, counters, stop=np.finfo(float).eps):
-    p = -grad
     c_k_coeff = np.float64(0.382)
     d_k_coeff = np.float64(0.618)
     a_l = l + c_k_coeff * (r - l)
     a_r = l + d_k_coeff * (r - l)
-    f_l_val = f([x + a_l * p[0], y + a_l * p[1]])
-    f_r_val = f([x + a_r * p[0], y + a_r * p[1]])
+    f_l_val = f([x - a_l * grad[0], y - a_l * grad[1]])
+    f_r_val = f([x - a_r * grad[0], y - a_r * grad[1]])
     counters[0] += 2
     while (r - l) > stop:
         counters[2] += 1
@@ -83,16 +82,36 @@ def golden_section(f, x, y, grad, l, r, counters, stop=np.finfo(float).eps):
             a_l = a_r
             f_l_val = f_r_val
             a_r = l + d_k_coeff * (r - l)
-            f_r_val = f([x + a_r * p[0], y + a_r * p[1]])
+            f_r_val = f([x - a_r * grad[0], y - a_r * grad[1]])
             counters[0] += 1
         else:
             r = a_r
             a_r = a_l
             f_r_val = f_l_val
             a_l = l + c_k_coeff * (r - l)
-            f_l_val = f([x + a_l * p[0], y + a_l * p[1]])
+            f_l_val = f([x - a_l * grad[0], y - a_l * grad[1]])
             counters[0] += 1
-    return l + c_k_coeff * (r - l)
+    return l, l + c_k_coeff * (r - l), r
+
+
+def parabolic(f, x, y, grad, alpha_vals):
+    def phi(alpha):
+        return f([x - alpha * grad[0], y - alpha * grad[1]])
+
+    alphas = np.array(alpha_vals)
+    phis = np.array([phi(alpha) for alpha in alphas])
+
+    A = np.vstack([alphas ** 2, alphas, np.ones_like(alphas)]).T
+    a, b, c = np.linalg.solve(A, phis)
+
+    if a <= 0:
+        res = alphas[np.argmin(phis)]
+    else:
+        res = -b / (2 * a)
+        if res < min(alphas) or res > max(alphas):
+            res = alphas[np.argmin(phis)]
+
+    return res
 
 
 def get_points_for_dihotomiya(l, r):
@@ -103,17 +122,16 @@ def get_points_for_dihotomiya(l, r):
 
 
 def dihotomiya(f, x, y, grad, l, r, counters, stop=np.finfo(float).eps):
-    p = -grad
     c_k, d_k, t_k = get_points_for_dihotomiya(l, r)
     while (r - l) > stop:
         counters[2] += 1
-        f_c_k = f([x + c_k * p[0], y + c_k * p[1]])
+        f_c_k = f([x - c_k * grad[0], y - c_k * grad[1]])
         counters[0] += 1
-        if f_c_k > f([x + d_k * p[0], y + d_k * p[1]]):
+        if f_c_k > f([x - d_k * grad[0], y - d_k * grad[1]]):
             counters[0] += 1
             r = c_k
             c_k, d_k, t_k = get_points_for_dihotomiya(l, r)
-        elif f_c_k > f([x + t_k * p[0], y + t_k * p[1]]):
+        elif f_c_k > f([x - t_k * grad[0], y - t_k * grad[1]]):
             counters[0] += 2
             l = c_k
             c_k, d_k, t_k = get_points_for_dihotomiya(l, r)
@@ -125,30 +143,68 @@ def dihotomiya(f, x, y, grad, l, r, counters, stop=np.finfo(float).eps):
     return c_k
 
 
+def l_search(f, x, y, grad, a_0):
+    alpha = line_search(
+        f=f,
+        myfprime=lambda args: grad_f(f, args[0], args[1]),
+        xk=np.array([x, y]),
+        pk=-grad,
+        amax=a_0,
+    )
+    return x - alpha[0] * grad[0], y - alpha[0] * grad[1]
+
+
+def s_minimize(f, x, y, grad, method):
+    alpha = minimize_scalar(
+        lambda a: f([x - a * grad[0], y - a * grad[1]]),
+        method=method,
+    )
+
+    return x - alpha.x * grad[0], y - alpha.x * grad[1]
+
+
 def make_step(
         f, x, y, h,
+        l_s_x,
+        l_s_y,
         grad,
+        grad_l_s,
         method,
         iteration,
         log_file,
         c1, c2,
-        a_max,
+        a_0,
         stop,
         counters
 ):
     match method:
         case "default":
-            return x - h * grad[0], y - h * grad[1]
+            return x - h * grad[0], y - h * grad[1], -1, -1
         case "decreasing_lr":
-            return x - (h / np.sqrt((iteration + 1))) * grad[0], y - (h / np.sqrt((iteration + 1))) * grad[1]
+            return x - (h / np.sqrt((iteration + 1))) * grad[0], y - (h / np.sqrt((iteration + 1))) * grad[1], -1, -1
         case "Armijo":
-            return armijo_gradient_descent(f, x, y, grad, c1, 1.0, 0.5, log_file, counters)
+            a_x, a_y = armijo_gradient_descent(f, x, y, grad, c1, a_0, 0.5, log_file, counters)
+            ls_x, ls_y = l_search(f, l_s_x, l_s_y, grad_l_s, a_0)
+            return a_x, a_y, ls_x, ls_y
         case "Goldstein":
-            return goldstein(f, x, y, grad, c1, c2, 1.0, 100, log_file, counters)
+            g_x, g_y = goldstein(f, x, y, grad, c1, c2, a_0, 100, log_file, counters)
+            ls_x, ls_y = l_search(f, l_s_x, l_s_y, grad_l_s, a_0)
+            return g_x, g_y, ls_x, ls_y
         case "golden_section":
-            return golden_section(f, x, y, grad, 0.0, a_max, counters, stop)
+            _, a2, _ = golden_section(f, x, y, grad, 0.0, a_0, counters, stop)
+            sm_x, sm_y = s_minimize(f, x, y, grad, "golden")
+
+            return x - a2 * grad[0], y - a2 * grad[1], sm_x, sm_y
         case "dihotomiya":
-            return dihotomiya(f, x, y, grad, 0.0, a_max, counters, stop)
+            alpha = dihotomiya(f, x, y, grad, 0.0, a_0, counters, stop)
+            return x - alpha * grad[0], y - alpha * grad[1], -1, -1
+        case "parabolic":
+            a1, a2, a3 = golden_section(f, x, y, grad, 0.0, a_0, counters, stop)
+            alpha = parabolic(f, x, y, grad, [a1, a2, a3])
+            counters[0] += 3
+            counters[2] += 1
+            s_x, s_y = s_minimize(f, x, y, grad, "brent")
+            return x - alpha * grad[0], y - alpha * grad[1], s_x, s_y
 
 
 def gradient_descent(
@@ -161,8 +217,7 @@ def gradient_descent(
         a_0=2.0
 ):
     x, y = x0, y0
-    l_s_x = x0
-    l_s_y = y0
+    l_s_x, l_s_y = x0, y0
     flag = True
     counters = [0, 0, 0]
     with open(f.__name__ + "_" + method + ".txt", "w") as log_file:
@@ -175,27 +230,12 @@ def gradient_descent(
             counters[0] += 4
             if np.linalg.norm(grad) < stop:
                 break
-            if method == "dihotomiya" or method == "golden_section":
-                if flag:
-                    alpha = line_search(
-                        f=f,
-                        myfprime=lambda args: grad_f(f, args[0], args[1]),
-                        xk=np.array([l_s_x, l_s_y]),
-                        maxiter=iterations,
-                        pk=-grad_l_s,
-                        amax=a_0,
-                    )
-                    if alpha[0] is None:
-                        print("Can't minimize this function with scipy.optimize.line_search. The line search did not "
-                              "converge.")
-                        flag = False
-                        continue
-                    l_s_x = l_s_x - alpha[0] * grad_l_s[0]
-                    l_s_y = l_s_y - alpha[0] * grad_l_s[1]
-                a = make_step(f, x, y, h, grad, method, i, log_file, c1, c2, a_0, stop, counters)
-                x = x - a * grad[0]
-                y = y - a * grad[1]
-            else:
-                x, y = make_step(f, x, y, h, grad, method, i, log_file, c1, c2, a_0, stop, counters)
+            x, y, l_s_x, l_s_y = make_step(
+                f, x, y, h,
+                l_s_x, l_s_y,
+                grad,
+                grad_l_s,
+                method, i, log_file, c1, c2, a_0, stop, counters,
+            )
 
     return [x, y, l_s_x, l_s_y, counters]
