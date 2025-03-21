@@ -170,21 +170,28 @@ def gradient_descent(
             counters[2] += 1
             log_file.write(f"{x} {y}" + "\n")
             grad = grad_f(f, x, y)
+            grad_l_s = grad_f(f, l_s_x, l_s_y)
             counters[1] += 1
             counters[0] += 4
             if np.linalg.norm(grad) < stop:
                 break
             if method == "dihotomiya" or method == "golden_section":
                 if flag:
-                    alpha = line_search(f=f, myfprime=lambda args: grad_f(f, args[0], args[1]), xk=np.array([x, y]),
-                                        pk=-grad, maxiter=iterations)
+                    alpha = line_search(
+                        f=f,
+                        myfprime=lambda args: grad_f(f, args[0], args[1]),
+                        xk=np.array([l_s_x, l_s_y]),
+                        maxiter=iterations,
+                        pk=-grad_l_s,
+                        amax=a_0,
+                    )
                     if alpha[0] is None:
                         print("Can't minimize this function with scipy.optimize.line_search. The line search did not "
                               "converge.")
                         flag = False
                         continue
-                    l_s_x = l_s_x - alpha[0] * grad[0]
-                    l_s_y = l_s_y - alpha[0] * grad[1]
+                    l_s_x = l_s_x - alpha[0] * grad_l_s[0]
+                    l_s_y = l_s_y - alpha[0] * grad_l_s[1]
                 a = make_step(f, x, y, h, grad, method, i, log_file, c1, c2, a_0, stop, counters)
                 x = x - a * grad[0]
                 y = y - a * grad[1]

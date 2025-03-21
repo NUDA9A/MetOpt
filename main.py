@@ -28,7 +28,7 @@ def print_result():
             if method == "dihotomiya" or method == "golden_section":
                 print(f"Scipy.optimize.line_search result: x={coords[2]}, y={coords[3]}")
             if method == "Armijo" or method == "Goldstein":
-                result = minimize(fun=function[0], x0=np.array([5, -5]), method='BFGS',
+                result = minimize(fun=function[0], x0=np.array([100, 2]), method='BFGS',
                                   options={'maxiter': 2000, 'gtol': np.finfo(float).eps})
                 print(f"Scipy BFGS result: x={result.x[0]}, y={result.x[1]}")
             print(f"x={coords[0]}, y={coords[1]}")
