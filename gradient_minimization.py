@@ -218,7 +218,6 @@ def gradient_descent(
 ):
     x, y = x0, y0
     l_s_x, l_s_y = x0, y0
-    flag = True
     counters = [0, 0, 0]
     with open(f.__name__ + "_" + method + ".txt", "w") as log_file:
         for i in range(iterations):

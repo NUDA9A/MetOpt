@@ -1,6 +1,5 @@
 from gradient_minimization import gradient_descent
-from scipy.optimize import minimize
-from functions import f1, f1_1, f1_2, f1_3, f3, multimodal_f, np
+from functions import f1, f1_1, f1_2, f1_3, f3, multimodal_f
 
 
 methods = ["default", "decreasing_lr", "Armijo", "Goldstein", "golden_section", "dihotomiya", "parabolic"]
