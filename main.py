@@ -22,9 +22,9 @@ def print_result():
             print(function[1])
             print("=" * 50)
             if method == "decreasing_lr":
-                coords = gradient_descent(function[0], 1, 2, method=method, h=0.1, iterations=50000)
+                coords = gradient_descent(function[0], 100, 2, method=method, h=0.1, iterations=50000)
             else:
-                coords = gradient_descent(function[0], 1, 2, method=method)
+                coords = gradient_descent(function[0], 100, 2, method=method, stop=1e-6)
             if method == "dihotomiya" or method == "golden_section":
                 print(f"Scipy.optimize.line_search result: x={coords[2]}, y={coords[3]}")
             if method == "Armijo" or method == "Goldstein":
@@ -32,6 +32,7 @@ def print_result():
                                   options={'maxiter': 2000, 'gtol': np.finfo(float).eps})
                 print(f"Scipy BFGS result: x={result.x[0]}, y={result.x[1]}")
             print(f"x={coords[0]}, y={coords[1]}")
+            print(f"func_count={coords[4][0]}, grad_count={coords[4][1]}, iter_count={coords[4][2]}")
             print("=" * 50)
 
 

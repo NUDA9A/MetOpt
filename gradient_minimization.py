@@ -12,15 +12,17 @@ def grad_f(f, x, y):
     return np.array([df_dx, df_dy])
 
 
-def goldstein(f, x, y, grad, c1, c2, a0, iterations, log_file):
+def goldstein(f, x, y, grad, c1, c2, a0, iterations, log_file, counters):
     p = -grad
     a_l = 0.0
     a_r = a0
     direction = np.dot(grad, p)
 
     fxy = f([x, y])
+    counters[0] += 1
 
     for _ in range(iterations):
+        counters[2] += 1
         a = 0.5 * (a_r - a_l)
         x_k = x + a * p[0]
         y_k = y + a * p[1]
@@ -28,6 +30,7 @@ def goldstein(f, x, y, grad, c1, c2, a0, iterations, log_file):
         l_a_c1 = fxy + c1 * a * direction
         l_a_c2 = fxy + c2 * a * direction
         func_value = f([x_k, y_k])
+        counters[0] += 1
 
         if func_value > l_a_c1:
             a_r = a
@@ -39,18 +42,22 @@ def goldstein(f, x, y, grad, c1, c2, a0, iterations, log_file):
     return x_k, y_k
 
 
-def armijo_gradient_descent(f, x, y, grad, c1, a0, q, log_file):
+def armijo_gradient_descent(f, x, y, grad, c1, a0, q, log_file, counters):
     p = -grad
     a = a0
     direction = np.dot(grad, p)
+    fxy = f([x, y])
+    counters[0] += 1
 
     while True:
+        counters[2] += 1
         x_k = x + a * p[0]
         y_k = y + a * p[1]
         log_file.write(str(x_k) + ' ' + str(y_k) + '\n')
 
         func_value = f([x_k, y_k])
-        l_a = f([x, y]) + c1 * a * direction
+        counters[0] += 1
+        l_a = fxy + c1 * a * direction
 
         if func_value <= l_a:
             break
@@ -60,7 +67,7 @@ def armijo_gradient_descent(f, x, y, grad, c1, a0, q, log_file):
     return x_k, y_k
 
 
-def golden_section(f, x, y, grad, l, r, log_file, stop=np.finfo(float).eps):
+def golden_section(f, x, y, grad, l, r, counters, stop=np.finfo(float).eps):
     p = -grad
     c_k_coeff = np.float64(0.382)
     d_k_coeff = np.float64(0.618)
@@ -68,20 +75,23 @@ def golden_section(f, x, y, grad, l, r, log_file, stop=np.finfo(float).eps):
     a_r = l + d_k_coeff * (r - l)
     f_l_val = f([x + a_l * p[0], y + a_l * p[1]])
     f_r_val = f([x + a_r * p[0], y + a_r * p[1]])
+    counters[0] += 2
     while (r - l) > stop:
-        log_file.write(f"{x + (l + c_k_coeff * (r - l)) * p[0]} {y + (l + c_k_coeff * (r - l)) * p[1]}\n")
+        counters[2] += 1
         if f_l_val > f_r_val:
             l = a_l
             a_l = a_r
             f_l_val = f_r_val
             a_r = l + d_k_coeff * (r - l)
             f_r_val = f([x + a_r * p[0], y + a_r * p[1]])
+            counters[0] += 1
         else:
             r = a_r
             a_r = a_l
             f_r_val = f_l_val
             a_l = l + c_k_coeff * (r - l)
             f_l_val = f([x + a_l * p[0], y + a_l * p[1]])
+            counters[0] += 1
     return l + c_k_coeff * (r - l)
 
 
@@ -92,67 +102,93 @@ def get_points_for_dihotomiya(l, r):
     return c_k, d_k, t_k
 
 
-def dihotomiya(f, x, y, grad, l, r, log_file, stop=np.finfo(float).eps):
+def dihotomiya(f, x, y, grad, l, r, counters, stop=np.finfo(float).eps):
     p = -grad
     c_k, d_k, t_k = get_points_for_dihotomiya(l, r)
     while (r - l) > stop:
-        log_file.write(f"{x + c_k * p[0]} {y + c_k * p[1]}\n")
+        counters[2] += 1
         f_c_k = f([x + c_k * p[0], y + c_k * p[1]])
-        f_d_k = f([x + d_k * p[0], y + d_k * p[1]])
-        f_t_k = f([x + t_k * p[0], y + t_k * p[1]])
-        if f_c_k > f_d_k:
+        counters[0] += 1
+        if f_c_k > f([x + d_k * p[0], y + d_k * p[1]]):
+            counters[0] += 1
             r = c_k
             c_k, d_k, t_k = get_points_for_dihotomiya(l, r)
-        elif f_c_k > f_t_k:
+        elif f_c_k > f([x + t_k * p[0], y + t_k * p[1]]):
+            counters[0] += 2
             l = c_k
             c_k, d_k, t_k = get_points_for_dihotomiya(l, r)
         else:
+            counters[0] += 2
             l = d_k
             r = t_k
             c_k, d_k, t_k = get_points_for_dihotomiya(l, r)
     return c_k
 
 
-def make_step(f, x, y, h, grad, method, iteration, log_file):
+def make_step(
+        f, x, y, h,
+        grad,
+        method,
+        iteration,
+        log_file,
+        c1, c2,
+        a_max,
+        stop,
+        counters
+):
     match method:
         case "default":
             return x - h * grad[0], y - h * grad[1]
         case "decreasing_lr":
             return x - (h / np.sqrt((iteration + 1))) * grad[0], y - (h / np.sqrt((iteration + 1))) * grad[1]
         case "Armijo":
-            return armijo_gradient_descent(f, x, y, grad, 0.5, 1.0, 0.5, log_file)
+            return armijo_gradient_descent(f, x, y, grad, c1, 1.0, 0.5, log_file, counters)
         case "Goldstein":
-            return goldstein(f, x, y, grad, 0.3, 0.7, 1.0, 100, log_file)
+            return goldstein(f, x, y, grad, c1, c2, 1.0, 100, log_file, counters)
         case "golden_section":
-            return golden_section(f, x, y, grad, 0.0, 2.0, log_file)
+            return golden_section(f, x, y, grad, 0.0, a_max, counters, stop)
         case "dihotomiya":
-            return dihotomiya(f, x, y, grad, 0.0, 2.0, log_file)
+            return dihotomiya(f, x, y, grad, 0.0, a_max, counters, stop)
 
 
-def gradient_descent(f, x0, y0, method="default", h=0.01, iterations=2000, stop=np.finfo(float).eps):
+def gradient_descent(
+        f, x0, y0,
+        method="default",
+        h=0.01,
+        iterations=2000,
+        stop=np.finfo(float).eps,
+        c1=0.3, c2=0.7,
+        a_0=2.0
+):
     x, y = x0, y0
     l_s_x = x0
     l_s_y = y0
     flag = True
+    counters = [0, 0, 0]
     with open(f.__name__ + "_" + method + ".txt", "w") as log_file:
         for i in range(iterations):
+            counters[2] += 1
             log_file.write(f"{x} {y}" + "\n")
             grad = grad_f(f, x, y)
+            counters[1] += 1
+            counters[0] += 4
             if np.linalg.norm(grad) < stop:
                 break
             if method == "dihotomiya" or method == "golden_section":
                 if flag:
-                    alpha = line_search(f=f, myfprime=lambda args: grad_f(f, args[0], args[1]), xk=np.array([x, y]), pk=-grad, maxiter=iterations)
+                    alpha = line_search(f=f, myfprime=lambda args: grad_f(f, args[0], args[1]), xk=np.array([x, y]),
+                                        pk=-grad, maxiter=iterations)
                     if alpha[0] is None:
-                        print("Can't minimize this function with scipy.optimize.line_search. The line search did not converge.")
+                        print("Can't minimize this function with scipy.optimize.line_search. The line search did not "
+                              "converge.")
                         flag = False
                         continue
                     l_s_x = l_s_x - alpha[0] * grad[0]
                     l_s_y = l_s_y - alpha[0] * grad[1]
-                a = make_step(f, x, y, h, grad, method, i, log_file)
+                a = make_step(f, x, y, h, grad, method, i, log_file, c1, c2, a_0, stop, counters)
                 x = x - a * grad[0]
                 y = y - a * grad[1]
             else:
-                x, y = make_step(f, x, y, h, grad, method, i, log_file)
+                x, y = make_step(f, x, y, h, grad, method, i, log_file, c1, c2, a_0, stop, counters)
 
-    return [x, y, l_s_x, l_s_y]
+    return [x, y, l_s_x, l_s_y, counters]
