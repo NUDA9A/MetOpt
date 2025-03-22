@@ -26,3 +26,11 @@ def f3(args):
 
 def multimodal_f(args):
     return 20 + args[0] ** 2 + args[1] ** 2 - 10 * np.cos(2*np.pi * args[0]) - 10 * np.cos(2 * np.pi * args[1])
+
+def noisy_multimodal_f(args, noise_level=0.2, modes=3):
+    x, y = args[0], args[1]
+    value = 0
+    for m in range(1, modes + 1):
+        value += np.sin(m * x) * np.cos(m * y)
+    noise = np.random.normal(0, noise_level)
+    return value + noise
