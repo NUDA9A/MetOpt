@@ -153,6 +153,10 @@ def l_search(f, x, y, grad, a_0, c1, c2):
         c1=c1,
         c2=c2,
     )
+
+    if alpha[0] is None:
+        return -1, -1
+
     return x - alpha[0] * grad[0], y - alpha[0] * grad[1]
 
 
