@@ -33,6 +33,7 @@ M = 3
 
 
 def noisy_multimodal_f(args):
+    np.random.seed(42)
     x, y = args[0], args[1]
     value = 0
     for m in range(1, M + 1):
