@@ -146,8 +146,6 @@ def dihotomiya(f, x, y, grad, l, r, counters, stop=np.finfo(float).eps):
             l = d_k
             r = t_k
             c_k, d_k, t_k = get_points_for_dihotomiya(l, r)
-            f_c_k = f([x - c_k * grad[0], y - c_k * grad[1]])
-            counters[0] += 1
     return c_k
 
 
