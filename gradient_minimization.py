@@ -123,23 +123,31 @@ def get_points_for_dihotomiya(l, r):
 
 def dihotomiya(f, x, y, grad, l, r, counters, stop=np.finfo(float).eps):
     c_k, d_k, t_k = get_points_for_dihotomiya(l, r)
+    f_c_k = f([x - c_k * grad[0], y - c_k * grad[1]])
+    counters[0] += 1
     while (r - l) > stop:
         counters[2] += 1
-        f_c_k = f([x - c_k * grad[0], y - c_k * grad[1]])
+        f_d_k = f([x - d_k * grad[0], y - d_k * grad[1]])
         counters[0] += 1
-        if f_c_k > f([x - d_k * grad[0], y - d_k * grad[1]]):
-            counters[0] += 1
+        if f_c_k > f_d_k:
             r = c_k
+            f_c_k = f_d_k
             c_k, d_k, t_k = get_points_for_dihotomiya(l, r)
-        elif f_c_k > f([x - t_k * grad[0], y - t_k * grad[1]]):
-            counters[0] += 2
+            continue
+
+        f_t_k = f([x - t_k * grad[0], y - t_k * grad[1]])
+        counters[0] += 1
+
+        if f_c_k > f_t_k:
             l = c_k
+            f_c_k = f_t_k
             c_k, d_k, t_k = get_points_for_dihotomiya(l, r)
         else:
-            counters[0] += 2
             l = d_k
             r = t_k
             c_k, d_k, t_k = get_points_for_dihotomiya(l, r)
+            f_c_k = f([x - c_k * grad[0], y - c_k * grad[1]])
+            counters[0] += 1
     return c_k
 
 
