@@ -23,6 +23,8 @@ B = 1.5
 def f3(args):
     return args[0] ** 2 + B * args[0] * args[1] + args[1] ** 2
 
+def f4(args):
+    return args[0]**2 + args[1]**2 * np.sin(3 * args[0]) * np.cos(2 * args[1])
 
 def multimodal_f(args):
     return 20 + args[0] ** 2 + args[1] ** 2 - 10 * np.cos(2*np.pi * args[0]) - 10 * np.cos(2 * np.pi * args[1])

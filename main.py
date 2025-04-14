@@ -1,14 +1,14 @@
 import numpy as np
 
 from gradient_minimization import gradient_descent, grad_f, hessp_factory
-from functions import f1, f1_1, f1_2, f1_3, f3, multimodal_f, noisy_multimodal_f
+from functions import f1, f1_1, f1_2, f1_3, f3, f4, multimodal_f, noisy_multimodal_f
 from scipy.optimize import minimize
 
 methods = [
     # "default",
     # "decreasing_lr",
     # "Armijo",
-    # "Goldstein",
+    # "Goldstein",ls
     # "golden_section",
     # "dihotomiya",
     # "parabolic",
@@ -21,7 +21,7 @@ functions = [(f1, "f1 = x^2 + y^2"),
              (f1_1, "f1_1 = (x + 2)^2 + y^2"),
              (f1_2, "f1_2 = x^2 + (y - 3)^2"),
              (f1_3, "f1_3 = (x - 2)^2 + (y + 1)^2"),
-             (f3, "f3 = x^2 + Bxy + y^2, -2 < B < 2"),
+             (f3, "f3 = x^2 + Bxy + y^2, -2 < B < 2"), (f4, "f4 = x**2 + y**2 * np.sin(3 * x) * np.cos(2 * y)"),
              (multimodal_f, "multimodal_f = 20 + x^2 + y^2 - 10cos(2 * pi * x) - 10cos(2 * pi * y)"),
              (noisy_multimodal_f, "noisy_multimodal_f = ∑ sin(m·x)·cos(m·y), m = 1..M + N(0, σ)"),
              ]

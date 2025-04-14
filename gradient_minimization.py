@@ -1,6 +1,6 @@
 from functions import np
 from scipy.optimize import line_search, minimize_scalar
-
+import optuna
 
 def hessp_factory(f):
     def hessp(x, p):
@@ -297,48 +297,45 @@ def make_step(
         counters,
         B, prev_args, prev_grad
 ):
-    match method:
-        case "default":
-            return x - h * grad[0], y - h * grad[1], -1, -1, None, None, None
-        case "decreasing_lr":
-            return x - (h / np.sqrt((iteration + 1))) * grad[0], y - (h / np.sqrt((iteration + 1))) * grad[1], -1, -1, None, None, None
-        case "Armijo":
-            a_x, a_y = armijo_gradient_descent(f, x, y, -grad, np.dot(grad, -grad), c1, a_0, q, log_file, counters)
-            ls_x, ls_y = l_search(f, l_s_x, l_s_y, grad_l_s, a_0, c1, 0.9)
-            return a_x, a_y, ls_x, ls_y, None, None, None
-        case "Goldstein":
-            g_x, g_y = goldstein(f, x, y, -grad, np.dot(grad, -grad), c1, c2, a_0, 100, log_file, counters)
-            ls_x, ls_y = l_search(f, l_s_x, l_s_y, grad_l_s, a_0, c1, c2)
-            return g_x, g_y, ls_x, ls_y, None, None, None
-        case "golden_section":
-            _, a2, _ = golden_section(f, x, y, grad, 0.0, a_0, counters, stop)
-            sm_x, sm_y = s_minimize(f, l_s_x, l_s_y, grad_l_s, "golden")
-
-            return x - a2 * grad[0], y - a2 * grad[1], sm_x, sm_y, None, None, None
-        case "dihotomiya":
-            alpha = dihotomiya(f, x, y, grad, 0.0, a_0, counters, stop)
-            return x - alpha * grad[0], y - alpha * grad[1], -1, -1, None, None, None
-        case "parabolic":
-            a1, a2, a3 = golden_section(f, x, y, grad, 0.0, a_0, counters, stop)
-            alpha = parabolic(f, x, y, grad, [a1, a2, a3])
-            counters[0] += 3
-            counters[2] += 1
-            s_x, s_y = s_minimize(f, l_s_x, l_s_y, grad_l_s, "brent")
-            return x - alpha * grad[0], y - alpha * grad[1], s_x, s_y, None, None, None
-        case "newton":
-            p = get_p_for_newton(f, x, y, grad, counters)
-
-            return x + newton_h * p[0], y + newton_h * p[1], -1, -1, None, None, None
-        case "newton_armijo":
-            p = get_p_for_newton(f, x, y, grad, counters)
-
-            direction = np.dot(grad, p)
-
-            a_x, a_y = armijo_gradient_descent(f, x, y, p, direction, c1, a_0, q, log_file, counters)
-
-            return a_x, a_y, -1, -1, None, None, None
-        case "bfgs":
-            return bfgs(f, x, y, B, prev_args, prev_grad, grad, iteration, log_file, counters, c1, a_0, q)
+    if method == "default":
+        return x - h * grad[0], y - h * grad[1], -1, -1, None, None, None
+    elif method == "decreasing_lr":
+        return x - (h / np.sqrt((iteration + 1))) * grad[0], y - (h / np.sqrt((iteration + 1))) * grad[
+            1], -1, -1, None, None, None
+    elif method == "Armijo":
+        a_x, a_y = armijo_gradient_descent(f, x, y, -grad, np.dot(grad, -grad), c1, a_0, q, log_file, counters)
+        ls_x, ls_y = l_search(f, l_s_x, l_s_y, grad_l_s, a_0, c1, 0.9)
+        return a_x, a_y, ls_x, ls_y, None, None, None
+    elif method == "Goldstein":
+        g_x, g_y = goldstein(f, x, y, -grad, np.dot(grad, -grad), c1, c2, a_0, 100, log_file, counters)
+        ls_x, ls_y = l_search(f, l_s_x, l_s_y, grad_l_s, a_0, c1, c2)
+        return g_x, g_y, ls_x, ls_y, None, None, None
+    elif method == "golden_section":
+        _, a2, _ = golden_section(f, x, y, grad, 0.0, a_0, counters, stop)
+        sm_x, sm_y = s_minimize(f, l_s_x, l_s_y, grad_l_s, "golden")
+        return x - a2 * grad[0], y - a2 * grad[1], sm_x, sm_y, None, None, None
+    elif method == "dihotomiya":
+        alpha = dihotomiya(f, x, y, grad, 0.0, a_0, counters, stop)
+        return x - alpha * grad[0], y - alpha * grad[1], -1, -1, None, None, None
+    elif method == "parabolic":
+        a1, a2, a3 = golden_section(f, x, y, grad, 0.0, a_0, counters, stop)
+        alpha = parabolic(f, x, y, grad, [a1, a2, a3])
+        counters[0] += 3
+        counters[2] += 1
+        s_x, s_y = s_minimize(f, l_s_x, l_s_y, grad_l_s, "brent")
+        return x - alpha * grad[0], y - alpha * grad[1], s_x, s_y, None, None, None
+    elif method == "newton":
+        p = get_p_for_newton(f, x, y, grad, counters)
+        return x + newton_h * p[0], y + newton_h * p[1], -1, -1, None, None, None
+    elif method == "newton_armijo":
+        p = get_p_for_newton(f, x, y, grad, counters)
+        direction = np.dot(grad, p)
+        a_x, a_y = armijo_gradient_descent(f, x, y, p, direction, c1, a_0, q, log_file, counters)
+        return a_x, a_y, -1, -1, None, None, None
+    elif method == "bfgs":
+        return bfgs(f, x, y, B, prev_args, prev_grad, grad, iteration, log_file, counters, c1, a_0, q)
+    else:
+        raise ValueError(f"Unknown method: {method}")
 
 
 def gradient_descent(
