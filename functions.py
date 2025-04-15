@@ -16,15 +16,16 @@ def f1_2(args):
 def f1_3(args):
     return (args[0] - 2) ** 2 + (args[1] + 1) ** 2
 
-
-B = 1.5
-
-
 def f3(args):
     return args[0] ** 2 + B * args[0] * args[1] + args[1] ** 2
 
 def f4(args):
     return args[0]**2 + args[1]**2 * np.sin(3 * args[0]) * np.cos(2 * args[1])
+
+B = 1.5
+def ackley_f(args):
+    return -20 * np.exp(-0.2 * np.sqrt((args[0]**2 + args[1]**2) / 2)) - np.exp((np.cos(2 * np.pi * args[0]) + np.cos(2 * np.pi * args[1])) / 2) + 20 + np.e
+
 
 def multimodal_f(args):
     return 20 + args[0] ** 2 + args[1] ** 2 - 10 * np.cos(2*np.pi * args[0]) - 10 * np.cos(2 * np.pi * args[1])
