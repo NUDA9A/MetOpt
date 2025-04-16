@@ -1,6 +1,5 @@
 from functions import np
 from scipy.optimize import line_search, minimize_scalar
-import optuna
 
 def hessp_factory(f):
     def hessp(x, p):
