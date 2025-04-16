@@ -1,6 +1,9 @@
 
 venv/
 
+multimodal_f_Armijo.txt
+
+
 __pycache__/
 *.py[cod]
 *$py.class
