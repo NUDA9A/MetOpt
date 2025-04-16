@@ -1,15 +1,5 @@
 
 venv/
 
-multimodal_f_Armijo.txt
-
-
-__pycache__/
-*.py[cod]
-*$py.class
-
-*.log
-*.sqlite3
-
-.vscode/
-.idea/
+git rm --cached multimodal_f_Armijo.txt
+echo "multimodal_f_Armijo.txt" >> .gitignore
